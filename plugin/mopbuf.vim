@@ -17,6 +17,8 @@ set cpo&vim
 
 
 command! MopbufOpen call mopbuf#open()
+command! MopbufClose call mopbuf#close()
+
 
 
 let g:mopbuf_enable_startup = get(g:, 'mopbuf_enable_startup', 0)

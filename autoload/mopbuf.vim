@@ -121,17 +121,34 @@ function! s:confirm_buffers_validate()
 endfunction
 
 
-" Open mopbuf window
+" Return 1 if display buffer exists, otherwise 0.
+function! s:is_exist_display_budder()
+    return bufwinnr(s:DISPLAY_BUFFER_NAME) != -1
+endfunction
+
+
+" Return display buffer number
+function! s:get_display_bufnr()
+    return bufnr(s:DISPLAY_BUFFER_NAME)
+endfunction
+
+
+" Open display window
 function! mopbuf#open()
     call s:initialize()
     call s:DEBUG_ECHO("managerd buffer", s:buf_manager.list())
 
-    " store
+    " Store
     let stored_splitbelow = &splitbelow
     let stored_splitright = &splitright
 
-    if bufnr(s:DISPLAY_BUFFER_NAME) == -1
-        silent exec 'noautocmd' (g:mopbuf_is_vsplit != 0 ? 'vertical topleft' : 'botright') ' split' s:DISPLAY_BUFFER_NAME
+    let stored_current_winnr = winnr()
+
+    silent execute 'noautocmd wincmd p'
+    let stored_prev_winnr = winnr()
+
+    if s:is_exist_display_budder() == 0
+        silent execute 'noautocmd' (g:mopbuf_is_vsplit != 0 ? 'vertical topleft' : 'botright') ' split' s:DISPLAY_BUFFER_NAME
         setlocal noswapfile
         setlocal nobuflisted
         setlocal buftype=nofile
@@ -140,14 +157,27 @@ function! mopbuf#open()
         setlocal norelativenumber
         resize 1
     else
+        let stored_switchbuf = &switchbuf
+        setlocal switchbuf=useopen
         silent exec 'noautocmd sbuffer' s:DISPLAY_BUFFER_NAME
+        let &switchbuf = stored_switchbuf
     endif
 
-    " restore
+    silent execute 'noautocmd' stored_prev_winnr 'wincmd w'
+    silent execute 'noautocmd' stored_current_winnr 'wincmd w'
+
+    " Restore
     let &splitbelow = stored_splitbelow
     let &splitright = stored_splitright
 endfunction
 
+
+" Close display window
+function! mopbuf#close()
+    if s:is_exist_display_budder() == 1
+        silent execute 'noautocmd bdelete' s:get_display_bufnr()
+    endif
+endfunction
 
 
 let &cpo = s:save_cpo
