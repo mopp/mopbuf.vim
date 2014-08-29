@@ -16,8 +16,10 @@ set cpo&vim
 
 
 
-command! MopbufOpen call mopbuf#open()
-command! MopbufClose call mopbuf#close()
+command! MopbufOpen     call mopbuf#open()
+command! MopbufOpenAll  call mopbuf#open_all_tabpage()
+command! MopbufClose    call mopbuf#close()
+command! MopbufCloseAll call mopbuf#close_all_tabpage()
 
 
 
