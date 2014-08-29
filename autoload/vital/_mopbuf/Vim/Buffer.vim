@@ -10,9 +10,16 @@ function! s:_vital_depends()
   return ['Prelude']
 endfunction
 
-function! s:is_cmdwin()
-  return bufname('%') ==# '[Command Line]'
-endfunction
+breakadd func *is_cmdwin
+if exists('*getcmdwintype')
+  function! s:is_cmdwin()
+    return getcmdwintype() !=# ''
+  endfunction
+else
+  function! s:is_cmdwin()
+    return bufname('%') ==# '[Command Line]'
+  endfunction
+endif
 
 function! s:open(buffer, opener)
   let save_wildignore = &wildignore
@@ -56,7 +63,9 @@ function! s:get_last_selected()
   let [begin, end] = [getpos("'<"), getpos("'>")]
   try
     if visualmode() ==# "\<C-v>"
-      if begin[2]+begin[3] ># end[2]+end[3]
+      let begincol = begin[2] + (begin[2] ># getline('.') ? begin[3] : 0)
+      let endcol   =   end[2] + (  end[2] ># getline('.') ?   end[3] : 0)
+      if begincol ># endcol
         " end's col must be greater than begin.
         let tmp = begin[2:3]
         let begin[2:3] = end[2:3]
@@ -64,8 +73,8 @@ function! s:get_last_selected()
       endif
       let virtpadchar = ' '
       let lines = map(getline(begin[1], end[1]), '
-      \ (v:val[begin[2]+begin[3]-1 : end[2]+end[3]-1])
-      \ . repeat(virtpadchar, end[2]+end[3]-len(v:val))
+      \ (v:val[begincol-1 : endcol-1])
+      \ . repeat(virtpadchar, endcol-len(v:val))
       \')
     else
       if begin[1] ==# end[1]
@@ -76,7 +85,7 @@ function! s:get_last_selected()
         \         + [getline(end[1])[: end[2]-1]]
       endif
     endif
-    return join(lines, "\n")
+    return join(lines, "\n") . (visualmode() ==# "V" ? "\n" : "")
   finally
     call setreg('"', save, save_type)
   endtry
