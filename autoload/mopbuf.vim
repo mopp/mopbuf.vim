@@ -15,13 +15,14 @@ set cpo&vim
 
 
 " Global variables.
+" FIXME: check each key has value.
 let g:mopbuf_settings = get(g:, 'mopbuf_settings', {
             \       'tabpage_mode' : 0,
             \       'vsplit_mode' : 0,
             \       'vsplit_width' : 35,
             \       'sort_order' : 'bufnr',
             \       'separator' : ' | ',
-            \       'auto_open_each_tab' : 1,
+            \       'auto_open_each_tab' : 0,
             \       'functions' : {
             \           'buffer_str' : 's:default_buffer_str',
             \           'set_syntax' : 's:default_set_syntax',
@@ -40,19 +41,13 @@ let s:S                   = s:V.import("Data.String")
 let s:L                   = s:V.import('Data.List')
 let s:is_initialize       = 0
 let s:buf_manager         = s:BM.new()
-let s:buf_info =
-            \   {
+let s:buf_info = {
             \       'uniq_names': {},
             \       'names': {},
             \       'paths': {},
             \       'strs': {},
             \       'user_bufnr': -1,
             \   }
-let s:tab_info  =
-            \ {
-            \   'is_open' : {},
-            \   'is_user_closed' : {},
-            \ }
 lockvar s:DISPLAY_BUFFER_NAME
 
 
@@ -97,6 +92,7 @@ endfunction
 " Return NOT ignored buffer number list.
 function! s:get_all_bufnr_list()
     let bufnrs = []
+
     for i in range(1, bufnr('$'))
         if s:is_managed_buffer(i) == 1
             call add(bufnrs, i)
@@ -216,25 +212,33 @@ function s:display_buffer_resize(win_size)
 endfunction
 
 
-" default function
-" *[1]:hoge.txt-* | [2]:huga.c-
+" Default function
+" [1:hoge.txt] | *[2:huga.txt+]* |
 function! s:default_buffer_str(buf_info)
     let mod = (getbufvar(a:buf_info.number, '&modified') == 1) ? '+' : '-'
     let cur = (a:buf_info.number == a:buf_info.user_bufnr) ? '*' : ''
-    return printf('%s[%d]:%s%s%s', cur, a:buf_info.number, a:buf_info.uniq_name, mod, cur)
+    return printf('%s[%d:%s%s]%s', cur, a:buf_info.number, a:buf_info.uniq_name, mod, cur)
 endfunction
 
 
-" default function
+" Default function
 function! s:default_set_syntax()
+    syntax clear
+    syntax match MopbufActiveNormal    /\*\[.*-\]\*/
+    syntax match MopbufActiveChanged   /\*\[.*+\]\*/
+    syntax match MopbufInactiveNormal  /\%(^\|\s\)\[[^\]]*-\]/
+    syntax match MopbufInactiveChanged /\%(^\|\s\)\[[^\]]*+\]/
+    syntax match MopbufSeparator       /\s|/
 endfunction
 
 
-" default function
+" Default function
 function! s:default_set_highlight()
-    " hi Type            guifg=#5FD7FF               gui=none
-    " hi StorageClass    guifg=#FF8700               gui=italic
-    " hi Structure       guifg=#0087D7
+    hi MopbufActiveNormal    term=none ctermfg=81  gui=none guifg=#5f00ff
+    hi MopbufActiveChanged   term=bold ctermfg=69  gui=bold guifg=#5f87ff
+    hi MopbufInactiveNormal  term=none ctermfg=146 gui=none guifg=#afafd7
+    hi MopbufInactiveChanged term=bold ctermfg=147 gui=bold guifg=#afafff
+    hi MopbufSeparator       term=bold ctermfg=241 gui=bold guifg=#606060
 endfunction
 
 
@@ -243,40 +247,40 @@ function! s:set_buffer_mapping()
 endfunction
 
 
-" Initialize
-function! s:initialize()
-    if s:is_initialize == 1
-        return
-    endif
-
-    " set auto commands
-    augroup mopbuf
-        autocmd!
-        " autocmd VimEnter                            * nested call <SID>VimEnterHandler()
-        autocmd TabEnter * call s:display_buffer_update()
-        autocmd BufAdd * call s:add_buffer(expand('<abuf>'))
-        autocmd BufEnter * call s:confirm_buffers_validate() | call s:display_buffer_update()
-        autocmd BufDelete * call s:remove_buffer(s:buf_manager, expand('<abuf>'))
-        autocmd CursorHold,CursorHoldI,BufWritePost * call s:display_buffer_update()
-        " autocmd QuitPre                             * if <SID>NextNormalWindow() == -1 | call <SID>StopExplorer(0) | endif
-        " autocmd FileType                            minibufexpl call <SID>RenderSyntax()
-    augroup END
-
-    " Add already existing buffer to manager.
-    for i in s:get_all_bufnr_list()
-        call s:add_buffer(i)
-    endfor
-
-    " Set highlight
-    let Set_highlight_func = function(g:mopbuf_settings.functions.set_highlight)
-    call Set_highlight_func()
-
-    let s:is_initialize = 1
+" Initialize tab local variables.
+function! s:init_tab_variable()
+    " If "is_open" is 1, display buffer shown in tabpage.
+    " If "is_user_closed" is 1, User did close display buffer using command.
+    " Tab local variable
+    let t:tab_info = get(t:, 'tab_info', {
+                \   'is_open' : 0,
+                \   'is_user_closed' : 0,
+                \ })
 endfunction
 
 
-" This works display buffer open and close
-" Argument is funcref only
+" Close display buffer
+function! s:display_buffer_close()
+    if s:is_exist_display_buffer() == 1
+        call s:display_buffer_focus()
+        close
+    endif
+endfunction
+
+
+" Focus display buffer
+function! s:display_buffer_focus()
+    " Move already exists buffer
+    let stored_switchbuf = &switchbuf
+    setlocal switchbuf=useopen
+    call s:exec_quietly('sbuffer ' . s:DISPLAY_BUFFER_NAME)
+    let &switchbuf = stored_switchbuf
+endfunction
+
+
+" This works in display buffer
+" And opens display buffer automatically.
+" Argument is reference to function or string of function name.
 function! s:display_buffer_worker(...)
     " Store
     let stored_splitbelow = &splitbelow
@@ -287,13 +291,7 @@ function! s:display_buffer_worker(...)
     call s:exec_quietly('wincmd p')
     let stored_prev_winnr = winnr()
 
-    let tabnr = tabpagenr()
-    if !has_key(s:tab_info.is_open, tabnr)
-        let s:tab_info.is_open[tabnr]        = 0
-        let s:tab_info.is_user_closed[tabnr] = 0
-    endif
-
-    if s:tab_info.is_open[tabnr] == 1 || (g:mopbuf_settings.auto_open_each_tab != 0 && s:tab_info.is_user_closed[tabnr] == 0)
+    if t:tab_info.is_open == 1 || (g:mopbuf_settings.auto_open_each_tab != 0 && t:tab_info.is_user_closed == 0)
         if s:is_exist_display_buffer() == 0
             " Open new buffer
             call s:exec_quietly((g:mopbuf_settings.vsplit_mode != 0 ? 'vertical topleft' : 'botright') . ' split ' . s:DISPLAY_BUFFER_NAME)
@@ -308,20 +306,12 @@ function! s:display_buffer_worker(...)
             call Set_syntax_func()
             call s:set_buffer_mapping()
         else
-            " Move already exists buffer
-            let stored_switchbuf = &switchbuf
-            setlocal switchbuf=useopen
-            call s:exec_quietly('sbuffer ' . s:DISPLAY_BUFFER_NAME)
-            let &switchbuf = stored_switchbuf
+            call s:display_buffer_focus()
         endif
 
-        let s:tab_info.is_open[tabnr] = 1
+        let t:tab_info.is_open = 1
     else
-        " NOT open display buffer
-        if s:is_exist_display_buffer() == 1
-            " If open , close it.
-            close
-        endif
+        call s:display_buffer_close()
         return
     endif
 
@@ -390,6 +380,38 @@ function! s:display_buffer_update()
 endfunction
 
 
+" Initialize
+function! mopbuf#initialize()
+    if s:is_initialize == 1
+        return
+    endif
+
+    call s:init_tab_variable()
+
+    " set auto commands
+    augroup mopbuf
+        autocmd!
+        autocmd TabEnter    * call s:init_tab_variable() | call s:display_buffer_update()
+        autocmd BufAdd      * call s:add_buffer(expand('<abuf>'))
+        autocmd BufEnter    * call s:confirm_buffers_validate() | call s:display_buffer_update()
+        autocmd BufDelete   * call s:remove_buffer(s:buf_manager, expand('<abuf>'))
+        autocmd QuitPre     * call s:display_buffer_close()
+        autocmd BufWritePost,TextChanged * call s:display_buffer_update()
+    augroup END
+
+    " Add already existing buffer to manager.
+    for i in s:get_all_bufnr_list()
+        call s:add_buffer(i)
+    endfor
+
+    " Set highlight
+    let Set_highlight_func = function(g:mopbuf_settings.functions.set_highlight)
+    call Set_highlight_func()
+
+    let s:is_initialize = 1
+endfunction
+
+
 " Return string that will be show in display buffer.
 function! mopbuf#get_buffers_str()
     let Buffer_str_func = function(g:mopbuf_settings.functions.buffer_str)
@@ -434,22 +456,19 @@ endfunction
 
 " Open display window
 function! mopbuf#open()
-    call s:initialize()
+    call mopbuf#initialize()
 
-    let tabnr = tabpagenr()
-    let s:tab_info.is_open[tabnr]        = 1
-    let s:tab_info.is_user_closed[tabnr] = 0
+    let t:tab_info.is_open = 1
     call s:display_buffer_update()
 endfunction
 
 
 " Open display window in all tabpage.
 function! mopbuf#open_all_tabpage()
-    call s:initialize()
+    call mopbuf#initialize()
 
     for i in range(1, tabpagenr('$'))
-        let s:tab_info.is_open[i]        = 1
-        let s:tab_info.is_user_closed[i] = 0
+        call settabvar(i, 'tab_info', {'is_open' : 1, 'is_user_closed' : 0})
     endfor
     call s:display_buffer_update()
 endfunction
@@ -462,10 +481,9 @@ function! mopbuf#close()
     endif
 
     if s:is_exist_display_buffer() == 1
-        let tabnr = tabpagenr()
-        let s:tab_info.is_open[tabnr]        = 0
-        let s:tab_info.is_user_closed[tabnr] = 1
-        call s:display_buffer_worker()
+        let t:tab_info.is_open = 0
+        let t:tab_info.is_user_closed = 1
+        call s:display_buffer_close()
     endif
 endfunction
 
@@ -477,13 +495,11 @@ function! mopbuf#close_all_tabpage()
     endif
 
     for i in range(1, tabpagenr('$'))
-        let s:tab_info.is_open[i]        = 0
-        let s:tab_info.is_user_closed[i] = 1
+        call settabvar(i, 'tab_info', {'is_open' : 0, 'is_user_closed' : 1})
     endfor
-    call s:display_buffer_worker()
-
-    call s:DEBUG_ECHO(s:tab_info)
+    call s:display_buffer_close()
 endfunction
+
 
 
 let &cpo = s:save_cpo
