@@ -45,7 +45,6 @@ let s:buf_info = {
             \       'last_date': {},
             \       'user_bufnr': -1,
             \   }
-lockvar s:DISPLAY_BUFFER_NAME
 
 
 
@@ -224,7 +223,7 @@ endfunction
 
 
 " Resize window of display buffer
-function s:display_buffer_resize(win_size)
+function! s:display_buffer_resize(win_size)
     call s:exec_quietly((g:mopbuf_settings.vsplit_mode != 0 ? 'vertical ' : '' ) . 'resize ' . a:win_size)
 endfunction
 
@@ -476,13 +475,13 @@ function! mopbuf#initialize()
     " set auto commands
     augroup mopbuf
         autocmd!
-        autocmd TabEnter    * call s:init_tab_variable() | call s:display_buffer_update()
-        autocmd BufAdd      * call s:add_buffer(expand('<abuf>'))
-        autocmd BufEnter    * call s:handler_buf_enter()
-        autocmd BufDelete   * call s:remove_buffer(s:buf_manager, expand('<abuf>'))
-        autocmd QuitPre     * call s:display_buffer_close()
-        autocmd CursorHold  * call s:echo_cmd()
-        autocmd BufWritePost,TextChanged * call s:display_buffer_update()
+        autocmd TabEnter     * call s:init_tab_variable() | call s:display_buffer_update()
+        autocmd BufAdd       * call s:add_buffer(expand('<abuf>'))
+        autocmd BufEnter     * call s:handler_buf_enter()
+        autocmd BufDelete    * call s:remove_buffer(s:buf_manager, expand('<abuf>'))
+        autocmd QuitPre      * call s:display_buffer_close()
+        autocmd CursorHold   * call s:echo_cmd() | call s:display_buffer_update()
+        autocmd BufWritePost * call s:display_buffer_update()
     augroup END
 
     " Add already existing buffer to manager.
@@ -499,7 +498,9 @@ endfunction
 
 
 " Return string that will be show in display buffer.
-function! mopbuf#get_buffers_str()
+function! mopbuf#get_buffers_str(...)
+    call mopbuf#initialize()
+
     let Buffer_str_func = function(g:mopbuf_settings.functions.buffer_str)
     let str             = ''
     let win_width       = winwidth(winnr())
@@ -508,6 +509,18 @@ function! mopbuf#get_buffers_str()
     let len_sep         = len(sep)
     let lst             = s:get_sorted_bufnr_list()
     let last            = lst[len(lst) - 1]
+
+    if a:0 == 1
+        " remove
+        let exclude = a:000[0]
+        for i in range(0, len(lst) - 1)
+            if exclude == lst[i]
+                call remove(lst, i)
+                break
+            endif
+        endfor
+    endif
+
     for i in lst
         " Set argument variable for handler function.
         let arg_buf_info               = {}
@@ -534,8 +547,28 @@ function! mopbuf#get_buffers_str()
 endfunction
 
 
+" Return string that will be show in display buffer.
+function! mopbuf#get_buffers_str_exclude(bufnr)
+    return mopbuf#get_buffers_str(a:bufnr)
+endfunction
+
+
+" Return 1, if display buffer is shown in current tab page.
+function! mopbuf#is_show_display_buffer()
+    let dbufnr = s:get_display_bufnr()
+    for i in range(1, winnr('$'))
+        if dbufnr == winbufnr(i)
+            return 1
+        endif
+    endfor
+    return 0
+endfunction
+
+
 " Return the number of managed buffer.
 function! mopbuf#managed_buffer_num()
+    call mopbuf#initialize()
+
     return len(s:buf_manager.list())
 endfunction
 

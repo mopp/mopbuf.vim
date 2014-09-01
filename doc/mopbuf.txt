@@ -52,6 +52,12 @@ FUNCTIONS                                   *mopbuf-functions*
 mopbuf#get_buffers_str()                    *mopbuf#get_buffers_str()*
         returns current string of showing in display buffer.
 
+mopbuf#get_buffers_str_exclude(bufnr)       *mopbuf#get_buffers_str_exclude()*
+        TODO
+
+mopbuf#is_show_display_buffer()             *mopbuf#is_show_display_buffer()*
+        TODO
+
 mopbuf#managed_buffer_num()                 *mopbuf#managed_buffer_num()*
         returns the number of managed buffer.
 
