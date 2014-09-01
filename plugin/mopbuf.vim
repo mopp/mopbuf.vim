@@ -21,6 +21,7 @@ command! MopbufOpenAll  call mopbuf#open_all_tabpage()
 command! MopbufClose    call mopbuf#close()
 command! MopbufCloseAll call mopbuf#close_all_tabpage()
 
+
 " Auto starting.
 let g:mopbuf_enable_startup = get(g:, 'mopbuf_enable_startup', 0)
 if g:mopbuf_enable_startup != 0

@@ -17,7 +17,7 @@ CONTENTS                                    *mopbuf-contents*
 
 ==============================================================================
 INTRODUCTION                                *mopbuf-introduction*
-    This is buffer visualizer.
+    This is buffer visualizer and buffer manager.
     This is developed in Github(https://github.com/mopp/mopbuf.git).
 
 
@@ -73,6 +73,11 @@ OPTIONS                                     *mopbuf-options*
     These oprions changes Plugin behavior.
     If you would like to change behavior, You add or change value in your
     vimrc.
+
+g:mopbuf_enable_startup                     *g:mopbuf_enable_startup*
+        Type : Number(Bool)
+        If this is 1, display buffer is shown automatically when starting vim.
+
 
 g:mopbuf_settings                           *g:mopbuf_settings*
         Type: Dictionary
