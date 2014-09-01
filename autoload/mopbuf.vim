@@ -313,7 +313,8 @@ endfunction
 
 " Close display buffer
 function! s:display_buffer_close()
-    if s:is_exist_display_buffer() == 1
+    if s:is_exist_display_buffer() && mopbuf#is_show_display_buffer()
+        call s:DEBUG_ECHO('close')
         call s:display_buffer_focus()
         close
     endif
@@ -443,6 +444,14 @@ function! s:display_buffer_update()
 endfunction
 
 
+" If option is enable, echo buffer string.
+function! s:echo_cmd()
+    if g:mopbuf_settings.is_echo_cmd != 0
+        echo mopbuf#get_buffers_str()
+    endif
+endfunction
+
+
 " Event handler of BufEnter.
 function! s:handler_buf_enter()
     call s:confirm_buffers_validate()
@@ -456,10 +465,10 @@ function! s:handler_buf_enter()
 endfunction
 
 
-" If option is enable, echo buffer string.
-function! s:echo_cmd()
-    if g:mopbuf_settings.is_echo_cmd != 0
-        echo mopbuf#get_buffers_str()
+" Event handler of QuitPre.
+function! s:handler_quit_pre()
+    if winnr('$') == 2
+        call s:display_buffer_close()
     endif
 endfunction
 
@@ -479,7 +488,7 @@ function! mopbuf#initialize()
         autocmd BufAdd       * call s:add_buffer(expand('<abuf>'))
         autocmd BufEnter     * call s:handler_buf_enter()
         autocmd BufDelete    * call s:remove_buffer(s:buf_manager, expand('<abuf>'))
-        autocmd QuitPre      * call s:display_buffer_close()
+        autocmd QuitPre      * call s:handler_quit_pre()
         autocmd CursorHold   * call s:echo_cmd() | call s:display_buffer_update()
         autocmd BufWritePost * call s:display_buffer_update()
     augroup END
