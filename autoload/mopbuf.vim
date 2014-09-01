@@ -137,7 +137,6 @@ function! s:get_sorted_bufnr_list()
     elseif g:mopbuf_settings.sort_order == 'frequency'
         return sort(lst, 's:frequency_sorter')
     else
-        call s:DEBUG_ECHO(s:buf_info.last_date)
         return sort(lst, 's:mru_sorter')
     endif
 endfunction
