@@ -1,8 +1,5 @@
 mopbuf
-0116903
+cd2390b
 
 Prelude
-Vim.Buffer
 Vim.BufferManager
-Data.String
-Data.List

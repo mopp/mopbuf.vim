@@ -4,7 +4,7 @@ This is buffer visualizer and buffer manager.
 
 ## installation
 ```vim
-    NeoBundle 'mopp/mopbuf.vim'
+NeoBundle 'mopp/mopbuf.vim'
 ```
 
 

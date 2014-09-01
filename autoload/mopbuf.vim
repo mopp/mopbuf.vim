@@ -21,7 +21,7 @@ let g:mopbuf_settings                            = get(g:, 'mopbuf_settings', {}
 let g:mopbuf_settings['is_echo_cmd']             = get(g:mopbuf_settings, 'is_echo_cmd', 0)
 let g:mopbuf_settings['vsplit_mode']             = get(g:mopbuf_settings, 'vsplit_mode', 0)
 let g:mopbuf_settings['vsplit_width']            = get(g:mopbuf_settings, 'vsplit_width', 35)
-let g:mopbuf_settings['sort_order']              = get(g:mopbuf_settings, 'sort_order', 'mru')
+let g:mopbuf_settings['sort_order']              = get(g:mopbuf_settings, 'sort_order', 'bufnr')
 let g:mopbuf_settings['separator']               = get(g:mopbuf_settings, 'separator', ' | ')
 let g:mopbuf_settings['auto_open_each_tab']      = get(g:mopbuf_settings, 'auto_open_each_tab', 1)
 let g:mopbuf_settings['functions']               = get(g:mopbuf_settings, 'functions', {})
@@ -137,6 +137,7 @@ function! s:get_sorted_bufnr_list()
     elseif g:mopbuf_settings.sort_order == 'frequency'
         return sort(lst, 's:frequency_sorter')
     else
+        call s:DEBUG_ECHO(s:buf_info.last_date)
         return sort(lst, 's:mru_sorter')
     endif
 endfunction
@@ -279,7 +280,7 @@ endfunction
 " Move cursor buffer
 function! s:move_cursor_buffer()
     let bufnr = s:get_cursor_bufnr()
-    call s:exec_quietly('wincmd p', 1)
+    call s:exec_quietly('wincmd p')
     call s:exec_quietly('buffer ' . bufnr, 1)
 endfunction
 
@@ -364,6 +365,7 @@ function! s:display_buffer_worker(...)
             setlocal buftype=nofile
             setlocal bufhidden=delete
             setlocal undolevels=-1
+            setlocal matchpairs=""
             call s:display_buffer_resize((g:mopbuf_settings.vsplit_mode != 0) ? g:mopbuf_settings.vsplit_width : 1)
 
             let Set_syntax_func    = function(g:mopbuf_settings.functions.set_syntax)
