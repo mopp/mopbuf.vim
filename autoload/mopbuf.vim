@@ -13,9 +13,12 @@ endif
 let s:save_cpo = &cpo
 set cpo&vim
 
+" TODO: buffer preview
+
 
 " Global variables.
 let g:mopbuf_settings                            = get(g:, 'mopbuf_settings', {})
+let g:mopbuf_settings['is_echo_cmd']             = get(g:mopbuf_settings, 'is_echo_cmd', 0)
 let g:mopbuf_settings['vsplit_mode']             = get(g:mopbuf_settings, 'vsplit_mode', 0)
 let g:mopbuf_settings['vsplit_width']            = get(g:mopbuf_settings, 'vsplit_width', 35)
 let g:mopbuf_settings['sort_order']              = get(g:mopbuf_settings, 'sort_order', 'mru')
@@ -453,6 +456,14 @@ function! s:handler_buf_enter()
 endfunction
 
 
+" If option is enable, echo buffer string.
+function! s:echo_cmd()
+    if g:mopbuf_settings.is_echo_cmd != 0
+        echo mopbuf#get_buffers_str()
+    endif
+endfunction
+
+
 " Initialize
 function! mopbuf#initialize()
     if s:is_initialize == 1
@@ -469,6 +480,7 @@ function! mopbuf#initialize()
         autocmd BufEnter    * call s:handler_buf_enter()
         autocmd BufDelete   * call s:remove_buffer(s:buf_manager, expand('<abuf>'))
         autocmd QuitPre     * call s:display_buffer_close()
+        autocmd CursorHold  * call s:echo_cmd()
         autocmd BufWritePost,TextChanged * call s:display_buffer_update()
     augroup END
 

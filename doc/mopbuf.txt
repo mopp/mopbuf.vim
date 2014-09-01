@@ -78,6 +78,12 @@ g:mopbuf_settings                           *g:mopbuf_settings*
         Type: Dictionary
         This contains all setting of this plugin.
 
+g:mopbuf_settings.is_echo_cmd               *g:mopbuf_settings.is_echo_cmd*
+        Type : Number(Bool)
+        If this is 1, echo buffer string into command line.
+
+        Default Value is 0.
+
 g:mopbuf_settings.vsplit_mode               *g:mopbuf_settings.vsplit_mode*
         Type : Number(Bool)
         If this is 0, Display buffer would be shown at left side.
