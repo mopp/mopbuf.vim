@@ -1,0 +1,160 @@
+*mopbuf.txt*
+
+Author:  Mopp
+License: NYSL
+Version: 0.2
+
+
+==============================================================================
+CONTENTS                                    *mopbuf-contents*
+    Introduction                            |mopbuf-introduction|
+        Install                             |mopbuf-install|
+    Commands                                |mopbuf-commands|
+    Functions                               |mopbuf-functions|
+    Options                                 |mopbuf-options|
+    Changelog                               |mopbuf-changelog|
+
+
+==============================================================================
+INTRODUCTION                                *mopbuf-introduction*
+    This is buffer visualizer.
+    This is developed in Github(https://github.com/mopp/mopbuf.git).
+
+
+------------------------------------------------------------------------------
+INSTALL                                     *mopbuf-install*
+    Install the distributed files into your Vim script directory which is
+    usually $HOME/.vim. you can use Neobundle below >
+        NeoBundle 'mopp/mopbuf.vim'
+<
+
+==============================================================================
+COMMANDS                                    *mopbuf-commands*
+
+
+:MopbufOpen
+    opens display buffer.
+
+:MopbufOpenAll
+    opens display buffer each tab page.
+
+:MopbufClose
+    closes display buffer.
+
+:MopbufCloseAll
+    closes display buffer each tab page.
+
+
+==============================================================================
+FUNCTIONS                                   *mopbuf-functions*
+
+
+mopbuf#get_buffers_str()                    *mopbuf#get_buffers_str()*
+        returns current string of showing in display buffer.
+
+mopbuf#managed_buffer_num()                 *mopbuf#managed_buffer_num()*
+        returns the number of managed buffer.
+
+mopbuf#open()                               *mopbuf#open()*
+        opens display buffer.
+
+mopbuf#open_all_tabpage()                   *mopbuf#open_all_tabpage()*
+        opens display buffer each tab page.
+
+mopbuf#close()                              *mopbuf#close()*
+        closes display buffer.
+
+mopbuf#close_all_tabpage()                  *mopbuf#close_all_tabpage()*
+        closes display buffer each tab page.
+
+
+==============================================================================
+OPTIONS                                     *mopbuf-options*
+    These oprions changes Plugin behavior.
+    If you would like to change behavior, You add or change value in your
+    vimrc.
+
+g:mopbuf_settings                           *g:mopbuf_settings*
+        Type: Dictionary
+        This contains all setting of this plugin.
+
+g:mopbuf_settings.vsplit_mode               *g:mopbuf_settings.vsplit_mode*
+        Type : Number(Bool)
+        If this is 0, Display buffer would be shown at left side.
+
+        Default Value is 0.
+
+g:mopbuf_settings.vsplit_width              *g:mopbuf_settings.vsplit_width*
+        Type : Number
+        This is evaluated only 'vsplit_mode' is 1.
+        Width value of display buffer.
+
+        Default Value is 35.
+
+g:mopbuf_settings.sort_order                *g:mopbuf_settings.sort_order*
+        Type : String
+        This value can be "bufnr" or "mru" or "frequency".
+            "bufnr" is buffer number order.
+                buffer has most small buffer number is most left.
+            "mru' is used order.
+                most recent used buffer is most left.
+            "frequency' is access order.
+                most access buffer is most left.
+
+        Default Value is "bufnr".
+
+g:mopbuf_settings.separator                 *g:mopbuf_settings.separator*
+        Type: String
+        This is shown between each buffer name in display buffer.
+
+        Default Value is ' | '.
+
+g:mopbuf_settings.auto_open_each_tab        *g:mopbuf_settings.auto_open_each_tab*
+        Type : Number(Bool)
+        If this is 0, display buffer NOT open automatically when opening tab
+        page.
+
+        Default Value is 1.
+
+g:mopbuf_settings.functions                 *g:mopbuf_settings.functions*
+        Type : Dictionary
+        This value of dictionary contains string of function name.
+        Available keys of dictionary.
+
+            'buffer_str'
+                is used for making buffer string in display buffer.
+                This function has 1 argument.
+
+                'buf_info'
+                    Type : Dictionary
+                    This has some buffer infomations to generate buffer
+                    strings.
+                    "number"
+                        Type : Number
+                        Buffer number.
+                    "path"
+                        Type : String
+                        Buffer path.
+                    "name"
+                        Type : String
+                        Buffer name.
+                    "uniq_name"
+                        Type : String
+                        Buffer name.
+                        But this is NOT same the others.
+                    "user_bufnr"
+                        Type : Number
+                        Buffer number that is focused currently by user.
+
+            'set_syntax'
+                is used for setting syntax in display buffer.
+
+            'set_highlight'
+                is used for setting highlight in display buffer.
+
+        You can change design of display buffer.
+
+
+==============================================================================
+
+vim:ts=4:ft=help:norl:
