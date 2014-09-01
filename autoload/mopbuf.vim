@@ -22,7 +22,7 @@ let g:mopbuf_settings = get(g:, 'mopbuf_settings', {
             \       'vsplit_width' : 35,
             \       'sort_order' : 'bufnr',
             \       'separator' : ' | ',
-            \       'auto_open_each_tab' : 0,
+            \       'auto_open_each_tab' : 1,
             \       'functions' : {
             \           'buffer_str' : 's:default_buffer_str',
             \           'set_syntax' : 's:default_set_syntax',
@@ -242,8 +242,44 @@ function! s:default_set_highlight()
 endfunction
 
 
+" Get buffer number in display buffer at cursor.
+function! s:get_cursor_bufnr()
+    let strs = split(mopbuf#get_buffers_str(), '\%(' . g:mopbuf_settings.separator . '\|' . "\n" . '\)')
+
+    let p = getcurpos()
+    let cpos = ((p[1] - 1) * winwidth(winnr())) + p[2]
+    let sum = 0
+    for i in range(len(strs))
+        let sum = sum + len(strs[i] . g:mopbuf_settings.separator)
+        if cpos <= sum
+            let bufnrs = s:get_sorted_bufnr_list()
+            return bufnrs[i]
+        endif
+    endfor
+endfunction
+
+
+" Move cursor buffer
+function! s:move_cursor_buffer()
+    let bufnr = s:get_cursor_bufnr()
+    call s:exec_quietly('wincmd p', 1)
+    call s:exec_quietly('buffer ' . bufnr, 1)
+endfunction
+
+
+" Move cursor to left or right.
+function! s:move_left_right(is_left)
+
+endfunction
+
+
 " Setting buffer local mapping in display buffer
 function! s:set_buffer_mapping()
+    nnoremap <buffer><silent> q :<C-U>call mopbuf#close()<CR>
+    nnoremap <buffer><silent> Q :<C-U>call mopbuf#close()<CR>
+    nnoremap <buffer><silent> h :<C-U>
+    nnoremap <buffer><silent> l :<C-U>
+    nnoremap <buffer><silent> <CR> :<C-U>call <SID>move_cursor_buffer()<CR>
 endfunction
 
 
@@ -420,7 +456,7 @@ function! mopbuf#get_buffers_str()
     let len_str         = 0
     let sep             = g:mopbuf_settings.separator
     let len_sep         = len(sep)
-    let lst             = s:get_bufnr_list()
+    let lst             = s:get_sorted_bufnr_list()
     let last            = lst[len(lst) - 1]
     for i in lst
         " Set argument variable for handler function.
