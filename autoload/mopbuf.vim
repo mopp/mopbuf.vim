@@ -15,37 +15,31 @@ set cpo&vim
 
 
 " Global variables.
-" FIXME: check each key has value.
-let g:mopbuf_settings = get(g:, 'mopbuf_settings', {
-            \       'tabpage_mode' : 0,
-            \       'vsplit_mode' : 0,
-            \       'vsplit_width' : 35,
-            \       'sort_order' : 'bufnr',
-            \       'separator' : ' | ',
-            \       'auto_open_each_tab' : 1,
-            \       'functions' : {
-            \           'buffer_str' : 's:default_buffer_str',
-            \           'set_syntax' : 's:default_set_syntax',
-            \           'set_highlight' : 's:default_set_highlight',
-            \       },
-            \   })
+let g:mopbuf_settings                            = get(g:, 'mopbuf_settings', {})
+let g:mopbuf_settings['vsplit_mode']             = get(g:mopbuf_settings, 'vsplit_mode', 0)
+let g:mopbuf_settings['vsplit_width']            = get(g:mopbuf_settings, 'vsplit_width', 35)
+let g:mopbuf_settings['sort_order']              = get(g:mopbuf_settings, 'sort_order', 'mru')
+let g:mopbuf_settings['separator']               = get(g:mopbuf_settings, 'separator', ' | ')
+let g:mopbuf_settings['auto_open_each_tab']      = get(g:mopbuf_settings, 'auto_open_each_tab', 1)
+let g:mopbuf_settings['functions']               = get(g:mopbuf_settings, 'functions', {})
+let g:mopbuf_settings.functions['buffer_str']    = get(g:mopbuf_settings.functions, 'buffer_str', 's:default_buffer_str')
+let g:mopbuf_settings.functions['set_syntax']    = get(g:mopbuf_settings.functions, 'set_syntax', 's:default_set_syntax')
+let g:mopbuf_settings.functions['set_highlight'] = get(g:mopbuf_settings.functions, 'set_highlight', 's:default_set_highlight')
 
 
 " Script local variables.
 let s:DISPLAY_BUFFER_NAME = '--MopBuf--'
-let s:V                   = vital#of('mopbuf')
-let s:B                   = s:V.import('Vim.Buffer')
-let s:BM                  = s:V.import('Vim.BufferManager')
-let s:P                   = s:V.import('Prelude')
-let s:S                   = s:V.import("Data.String")
-let s:L                   = s:V.import('Data.List')
 let s:is_initialize       = 0
-let s:buf_manager         = s:BM.new()
+let s:V                   = vital#of('mopbuf')
+let s:P                   = s:V.import('Prelude')
+let s:buf_manager         = s:V.import('Vim.BufferManager').new()
 let s:buf_info = {
             \       'uniq_names': {},
             \       'names': {},
             \       'paths': {},
             \       'strs': {},
+            \       'access_counter': {},
+            \       'last_date': {},
             \       'user_bufnr': -1,
             \   }
 lockvar s:DISPLAY_BUFFER_NAME
@@ -68,6 +62,18 @@ function! s:DEBUG_ECHO(...)
     endif
 
     echomsg str
+endfunction
+
+
+" Initialize tab local variables.
+function! s:init_tab_variable()
+    " If "is_open" is 1, display buffer shown in tabpage.
+    " If "is_user_closed" is 1, User did close display buffer using command.
+    " Tab local variable
+    let t:tab_info = get(t:, 'tab_info', {
+                \   'is_open' : 0,
+                \   'is_user_closed' : 0,
+                \ })
 endfunction
 
 
@@ -103,28 +109,33 @@ function! s:get_all_bufnr_list()
 endfunction
 
 
-" Return NOT ignored buffer
-" This return value depends g:mopbuf_settings.tabpage_mode
-function! s:get_bufnr_list()
-    if g:mopbuf_settings.tabpage_mode == 0
-        return s:get_all_bufnr_list()
-    endif
+" This is used for sorting by frequency.
+function! s:frequency_sorter(nr1, nr2)
+    let ac1 = s:buf_info.access_counter[a:nr1]
+    let ac2 = s:buf_info.access_counter[a:nr2]
+    return ac2 - ac1
+endfunction
 
-    let bufnrs = []
-    for i in range(1, tabpagebuflist(tabpagenr()))
-        if s:is_managed_buffer(i) == 1
-            call add(bufnrs, i)
-        endif
-    endfor
 
-    return bufnrs
+" This is used for sorting by mru.
+function! s:mru_sorter(nr1, nr2)
+    let ac1 = s:buf_info.last_date[a:nr1]
+    let ac2 = s:buf_info.last_date[a:nr2]
+    return ac2 - ac1
 endfunction
 
 
 " Return list of sorted managed buffer numbers
 function! s:get_sorted_bufnr_list()
-    " TODO:
-    return sort(copy(s:buf_manager.list()), 'n')
+    let lst = sort(copy(s:buf_manager.list()), 'n')
+
+    if g:mopbuf_settings.sort_order == 'bufnr'
+        return lst
+    elseif g:mopbuf_settings.sort_order == 'frequency'
+        return sort(lst, 's:frequency_sorter')
+    else
+        return sort(lst, 's:mru_sorter')
+    endif
 endfunction
 
 
@@ -136,6 +147,8 @@ function! s:remove_buffer(bufman, bufnr)
             call remove(s:buf_info.names, a:bufnr)
             call remove(s:buf_info.uniq_names, a:bufnr)
             call remove(s:buf_info.paths, a:bufnr)
+            call remove(s:buf_info.access_counter, a:bufnr)
+            call remove(s:buf_info.last_date, a:bufnr)
         endif
     endif
 endfunction
@@ -157,17 +170,18 @@ function! s:add_buffer(bufnr)
         endfor
     else
         " No name buffer
-        let bufname = '--NO NAME--'
+        let bufname = '--NO NAME--(' . strftime("%H:%M") . ')'
         let s:buf_info.paths[a:bufnr] = ''
-        " FIXME: Make No name buffer unique.
     endif
 
     if !has_key(s:buf_info.uniq_names, a:bufnr)
-        " buffer name is already unique.
+        " Buffer name is already unique.
         let s:buf_info.uniq_names[a:bufnr] = bufname
     endif
 
     let s:buf_info.names[a:bufnr] = bufname
+    let s:buf_info.access_counter[a:bufnr] = 0
+    let s:buf_info.last_date[a:bufnr] = localtime()
 endfunction
 
 
@@ -269,29 +283,29 @@ endfunction
 
 " Move cursor to left or right.
 function! s:move_left_right(is_left)
+    if a:is_left == 1
+        call search(g:mopbuf_settings.separator, 'b')
+        call search(g:mopbuf_settings.separator, 'b')
+    else
+        call search(g:mopbuf_settings.separator)
+    endif
 
+    let len = len(g:mopbuf_settings.separator)
+    call s:exec_quietly('normal! ' . len . 'l', 1)
 endfunction
 
 
 " Setting buffer local mapping in display buffer
 function! s:set_buffer_mapping()
     nnoremap <buffer><silent> q :<C-U>call mopbuf#close()<CR>
-    nnoremap <buffer><silent> Q :<C-U>call mopbuf#close()<CR>
-    nnoremap <buffer><silent> h :<C-U>
-    nnoremap <buffer><silent> l :<C-U>
+    nmap     <buffer><silent> Q q
+    nnoremap <buffer><silent> h :<C-U>call <SID>move_left_right(1)<CR>
+    nnoremap <buffer><silent> l :<C-U>call <SID>move_left_right(0)<CR>
+    nmap     <buffer><silent> w l
+    nmap     <buffer><silent> W l
+    nmap     <buffer><silent> b h
+    nmap     <buffer><silent> B h
     nnoremap <buffer><silent> <CR> :<C-U>call <SID>move_cursor_buffer()<CR>
-endfunction
-
-
-" Initialize tab local variables.
-function! s:init_tab_variable()
-    " If "is_open" is 1, display buffer shown in tabpage.
-    " If "is_user_closed" is 1, User did close display buffer using command.
-    " Tab local variable
-    let t:tab_info = get(t:, 'tab_info', {
-                \   'is_open' : 0,
-                \   'is_user_closed' : 0,
-                \ })
 endfunction
 
 
@@ -304,8 +318,19 @@ function! s:display_buffer_close()
 endfunction
 
 
+" If current buffer is display buffer, this would return 1.
+function! s:is_focused_display_buffer()
+    return s:get_display_bufnr() == bufnr('')
+endfunction
+
+
 " Focus display buffer
 function! s:display_buffer_focus()
+    if s:is_focused_display_buffer()
+        " Already focused.
+        return
+    endif
+
     " Move already exists buffer
     let stored_switchbuf = &switchbuf
     setlocal switchbuf=useopen
@@ -346,35 +371,34 @@ function! s:display_buffer_worker(...)
         endif
 
         let t:tab_info.is_open = 1
+
+        " Window local option.
+        setlocal nonumber
+        setlocal norelativenumber
+        setlocal foldcolumn=0
+        setlocal nomodifiable
+        setlocal nocursorline
+
+        " Cursor focus is display buffer in this.
+        if a:0 == 1
+            " Set user buffer number.
+            let usr_bufnr = winbufnr(stored_current_winnr)
+            if !s:buf_manager.is_managed(usr_bufnr)
+                let usr_bufnr = -1
+            endif
+            let s:buf_info.user_bufnr = usr_bufnr
+
+            if s:P.is_funcref(a:1) == 1
+                call a:1()
+            elseif s:P.is_string(a:1) == 1
+                let F = function(a:1)
+                call F()
+            else
+                echoerr 'ERROR: Argument is invalidate in s:display_buffer_worker()'
+            endif
+        endif
     else
         call s:display_buffer_close()
-        return
-    endif
-
-    " Window local option.
-    setlocal nonumber
-    setlocal norelativenumber
-    setlocal foldcolumn=0
-    setlocal nomodifiable
-    setlocal nocursorline
-
-    " Cursor focus is display buffer in this.
-    if a:0 == 1
-        " Set user buffer number.
-        let usr_bufnr = winbufnr(stored_current_winnr)
-        if !s:buf_manager.is_managed(usr_bufnr)
-            let usr_bufnr = -1
-        endif
-        let s:buf_info.user_bufnr = usr_bufnr
-
-        if s:P.is_funcref(a:1) == 1
-            call a:1()
-        elseif s:P.is_string(a:1) == 1
-            let F = function(a:1)
-            call F()
-        else
-            echoerr 'ERROR: Argument is invalidate in s:display_buffer_worker()'
-        endif
     endif
 
     " Restore window moving history
@@ -416,6 +440,19 @@ function! s:display_buffer_update()
 endfunction
 
 
+" Event handler of BufEnter.
+function! s:handler_buf_enter()
+    call s:confirm_buffers_validate()
+    let bufnr = bufnr('')
+    if !s:is_focused_display_buffer() && s:is_managed_buffer(bufnr)
+        " If current buffer is NOT display buffer and is managed buffer,
+        let s:buf_info.access_counter[bufnr] = s:buf_info.access_counter[bufnr] + 1
+        let s:buf_info.last_date[bufnr] = localtime()
+        call s:display_buffer_update()
+    endif
+endfunction
+
+
 " Initialize
 function! mopbuf#initialize()
     if s:is_initialize == 1
@@ -429,7 +466,7 @@ function! mopbuf#initialize()
         autocmd!
         autocmd TabEnter    * call s:init_tab_variable() | call s:display_buffer_update()
         autocmd BufAdd      * call s:add_buffer(expand('<abuf>'))
-        autocmd BufEnter    * call s:confirm_buffers_validate() | call s:display_buffer_update()
+        autocmd BufEnter    * call s:handler_buf_enter()
         autocmd BufDelete   * call s:remove_buffer(s:buf_manager, expand('<abuf>'))
         autocmd QuitPre     * call s:display_buffer_close()
         autocmd BufWritePost,TextChanged * call s:display_buffer_update()
