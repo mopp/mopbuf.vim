@@ -12,7 +12,6 @@ CONTENTS                                    *mopbuf-contents*
     Commands                                |mopbuf-commands|
     Functions                               |mopbuf-functions|
     Options                                 |mopbuf-options|
-    Changelog                               |mopbuf-changelog|
 
 
 ==============================================================================
