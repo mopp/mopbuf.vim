@@ -512,7 +512,7 @@ function! mopbuf#get_buffers_str(...)
 
     let lst             = s:get_sorted_bufnr_list()
     if len(lst) <= 0
-        return
+        return ''
     endif
 
     let Buffer_str_func = function(g:mopbuf_settings.functions.buffer_str)
