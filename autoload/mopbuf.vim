@@ -510,13 +510,17 @@ endfunction
 function! mopbuf#get_buffers_str(...)
     call mopbuf#initialize()
 
+    let lst             = s:get_sorted_bufnr_list()
+    if len(lst) <= 0
+        return
+    endif
+
     let Buffer_str_func = function(g:mopbuf_settings.functions.buffer_str)
     let str             = ''
     let win_width       = winwidth(winnr())
     let len_str         = 0
     let sep             = g:mopbuf_settings.separator
     let len_sep         = len(sep)
-    let lst             = s:get_sorted_bufnr_list()
     let last            = lst[len(lst) - 1]
 
     if a:0 == 1
