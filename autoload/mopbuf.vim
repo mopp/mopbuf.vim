@@ -432,7 +432,7 @@ function! s:updator()
     " Write into display buffer
     setlocal modifiable
     call s:exec_quietly('normal! ggVG"_dd')
-    put! =str
+    silent put! =str
     call s:exec_quietly('normal! G"_ddgg')
     setlocal nomodifiable
 endfunction
