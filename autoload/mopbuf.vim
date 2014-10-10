@@ -458,7 +458,7 @@ function! s:handler_buf_enter()
     let bufnr = bufnr('')
     if !s:is_focused_display_buffer() && s:is_managed_buffer(bufnr)
         " If current buffer is NOT display buffer and is managed buffer,
-        let s:buf_info.access_counter[bufnr] = s:buf_info.access_counter[bufnr] + 1
+        let s:buf_info.access_counter[bufnr] = get(s:buf_info.access_counter, bufnr, 0) + 1
         let s:buf_info.last_date[bufnr] = localtime()
         call s:display_buffer_update()
     endif
