@@ -127,9 +127,14 @@ function! s:mru_sorter(nr1, nr2)
 endfunction
 
 
+func s:n_sorter(i1, i2)
+    return a:i1 == a:i2 ? 0 : a:i1 > a:i2 ? 1 : -1
+endfunc
+
+
 " Return list of sorted managed buffer numbers
 function! s:get_sorted_bufnr_list()
-    let lst = sort(copy(s:buf_manager.list()), 'n')
+    let lst = sort(copy(s:buf_manager.list()), 's:n_sorter')
 
     if g:mopbuf_settings.sort_order == 'bufnr'
         return lst
